@@ -35,11 +35,13 @@ class AIPlayer(Player):
         #variables (see getMove() below)
         self.myFood = None
         self.myTunnel = None
+        self.myHill = None
         self.stateUtil = self.initializeStateUtil() # {state: utility} # TODO check file structure and initialize
         self.discountFactor = 0.95 # Constant
         self.learningRate = 1.0 # will exponentially decline
         self.explorationRate = 1.0 # will exponentially decline
         self.lastState = None
+
 
     ##
     #getPlacement
@@ -83,6 +85,14 @@ class AIPlayer(Player):
     #
     ##
     def getMove(self, currentState):
+        # one time variables
+        if (self.myTunnel == None):
+            self.myTunnel = getConstrList(currentState, currentState.whoseTurn, (TUNNEL,))[0]
+        if (self.myHill == None):
+            self.myHill = getConstrList(currentState, currentState.whoseTurn, (ANTHILL,))[0]
+        if (self.myFood == None):
+            foods = getCurrPlayerFood(self, currentState)
+
         # save this state in case the game ends
         self.lastState = currentState
         # update stateUtil for self.lastState by applying TD learning equation
@@ -139,8 +149,58 @@ class AIPlayer(Player):
     #   state: GameState to consolidate.
     #
     def consolidateState(self, state):
-        pass
+        # helper variables
+        queen = myInv.getQueen()
+        workers = getAntList(state, state.whoseTurn, (WORKER,))
 
+        simpleState = []
+
+        # number of workers
+        simpleState.append(len(workers))
+        # amount of food
+        simpleState.append(state.inventories[state.whoseTurn].foodCount)
+        # average dist of carrying ants/non=carrying ants
+        numCarry = 0
+        sumCarry = 0
+        numForage = 0
+        sumForage = 0
+        for worker in myWorkers:
+            if worker.carrying:
+                numCarry += 1
+                sumCarry += (min(approxDist(worker.coords, self.myHill.coords),
+                               approxDist(worker.coords, self.myTunnel.coords)))
+                # # Encourage worker to go on hill/tunnel if it has food
+                # if min(approxDist(worker.coords, myHill.coords),
+                # approxDist(worker.coords, myTunnel.coords)) == 0:
+                #     sumCarry += 20
+            else:
+                numForage += 1
+                sumForage += (min(approxDist(worker.coords, self.myFoods[0].coords),
+                               approxDist(worker.coords, self.myFoods[1].coords)))
+                # # Encourage worker to go on food if it does not have food
+                # if min(approxDist(worker.coords, myFoods[0].coords),
+                # approxDist(worker.coords, myFoods[1].coords)) == 0:
+                #     sumForage += 20
+        if numCarry > 0:
+            simpleState.append(sumCarry / float(numCarry))
+        else:
+            simpleState.append(0)
+
+        if numForage > 0:
+            simpleState.append(sumForage / float(numForage))
+        else:
+            simpleState.append(0)
+
+        # queen is on anthill
+        if queen.coords == self.myHill.coords:
+            simpleState.append(1)
+        else:
+            simpleState.append(0)
+        # queen is on tunnell
+        if queen.coords == self.myTunnel.coords:
+            simpleState.append(1)
+        else:
+            simpleState.append(0)
     ##
     # saveUtils
     # Description: writes the current stateUtil dictionary to a file.
