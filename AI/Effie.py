@@ -35,6 +35,11 @@ class AIPlayer(Player):
         #variables (see getMove() below)
         self.myFood = None
         self.myTunnel = None
+        self.stateUtil = self.initializeStateUtil() # {state: utility} # TODO check file structure and initialize
+        self.discountFactor = 0.95 # Constant
+        self.learningRate = 1.0 # will exponentially decline
+        self.explorationRate = 1.0 # will exponentially decline
+        self.lastState = None
 
     ##
     #getPlacement
@@ -78,85 +83,24 @@ class AIPlayer(Player):
     #
     ##
     def getMove(self, currentState):
-        #asciiPrintState(currentState)
-        #Useful pointers
-        myInv = getCurrPlayerInventory(currentState)
-        me = currentState.whoseTurn
+        # save this state in case the game ends
+        self.lastState = currentState
+        # update stateUtil for self.lastState by applying TD learning equation
+        # make a move
+        moveType = random.random() # [0, 1]
 
-        #the first time this method is called, the food and tunnel locations
-        #need to be recorded in their respective instance variables
-        if (self.myTunnel == None):
-            self.myTunnel = getConstrList(currentState, me, (TUNNEL,))[0]
-        if (self.myFood == None):
-            foods = getConstrList(currentState, None, (FOOD,))
-            self.myFood = foods[0]
-            #find the food closest to the tunnel
-            bestDistSoFar = 1000 #i.e., infinity
-            for food in foods:
-                dist = stepsToReach(currentState, self.myTunnel.coords, food.coords)
-                if (dist < bestDistSoFar):
-                    self.myFood = food
-                    bestDistSoFar = dist
-
-        #if I don't have a worker, give up.  QQ
-        numAnts = len(myInv.ants)
-        if (numAnts == 1):
-            return Move(END, None, None)
-
-
-        #if the worker has already moved, we're done
-        workerList = getAntList(currentState, me, (WORKER,))
-        if (len(workerList) < 1):
-            return Move(END, None, None)
+        if moveType > self.explorationRate:
+            return self.makeExploitationMove(currentState)
         else:
-            myWorker = workerList[0]
-            if (myWorker.hasMoved):
-                return Move(END, None, None)
+            moves = listAllLegalMoves(currentState)
+            selectedMove = moves[random.randint(0,len(moves) - 1)];
 
+            #don't do a build move if there are already 3+ ants
+            numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
+            while (selectedMove.moveType == BUILD and numAnts >= 3):
+                selectedMove = moves[random.randint(0,len(moves) - 1)];
 
-        #if the queen is on the anthill move her
-        myQueen = myInv.getQueen()
-        if (myQueen.coords == myInv.getAnthill().coords):
-            return Move(MOVE_ANT, [myInv.getQueen().coords, (1,0)], None)
-
-        #if the hasn't moved, have her move in place so she will attack
-        if (not myQueen.hasMoved):
-            return Move(MOVE_ANT, [myQueen.coords], None)
-
-
-        #if I have the foos and the anthill is unoccupied then
-        #make a drone
-        if (myInv.foodCount > 2):
-            if (getAntAt(currentState, myInv.getAnthill().coords) is None):
-                return Move(BUILD, [myInv.getAnthill().coords], DRONE)
-
-        #Move all my drones towards the enemy
-        myDrones = getAntList(currentState, me, (DRONE,))
-        for drone in myDrones:
-            if not (drone.hasMoved):
-                droneX = drone.coords[0]
-                droneY = drone.coords[1]
-                if (droneY < 9):
-                    droneY += 1;
-                else:
-                    droneX += 1;
-                if (droneX,droneY) in listReachableAdjacent(currentState, drone.coords, 3):
-                    return Move(MOVE_ANT, [drone.coords, (droneX, droneY)], None)
-                else:
-                    return Move(MOVE_ANT, [drone.coords], None)
-
-        #if the worker has food, move toward tunnel
-        if (myWorker.carrying):
-            path = createPathToward(currentState, myWorker.coords,
-                                    self.myTunnel.coords, UNIT_STATS[WORKER][MOVEMENT])
-            return Move(MOVE_ANT, path, None)
-
-        #if the worker has no food, move toward food
-        else:
-            path = createPathToward(currentState, myWorker.coords,
-                                    self.myFood.coords, UNIT_STATS[WORKER][MOVEMENT])
-            return Move(MOVE_ANT, path, None)
-
+            return selectedMove
 
     ##
     #getAttack
@@ -169,8 +113,54 @@ class AIPlayer(Player):
     ##
     #registerWin
     #
-    # This agent doens't learn
+    # save the stateUtil mapping to a file and updates the learning and exploration rates
     #
     def registerWin(self, hasWon):
-        #method templaste, not implemented
+        reward = hasWon
+        # update stateUtil for self.lastState by applying TD learning equation
+        # update learning rate
+        # update exploration rate
+        self.saveUtils()
+
+    ######################### NEW TD LEARNING METHODS ##########################
+    ## TODO complete
+    # initializeStateUtil
+    # Description: Sets the stateUtil dict as the contents of
+    # delplanc18_plaisted20_state_util.txt or empty.
+    #
+    def initializeStateUtil(self):
+        return {}
+
+    ##
+    # consolidateState
+    # Description: Map a GameState to a consolidated state based on food values.
+    #
+    # Parameters:
+    #   state: GameState to consolidate.
+    #
+    def consolidateState(self, state):
+        pass
+
+    ##
+    # saveUtils
+    # Description: writes the current stateUtil dictionary to a file.
+    # File Name delplanc18_plaisted20_state_util.txt
+    #
+    def saveUtils(self):
+        pass
+
+    ##
+    # loadUtils
+    # Description: reads the values from file name delplanc18_plaisted20_state_util.txt
+    #
+    def loadUtils(self):
+        pass
+
+    ##
+    # makeExploitationMove
+    # Description: pick the move that leads to the highest utility state. Ignore
+    # all moves without corresponding utility values. Break ties randomly and choose
+    # random move if no states have utilities
+    #
+    def makeExploitationMove(self, state):
         pass
