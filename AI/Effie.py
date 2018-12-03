@@ -37,7 +37,7 @@ class AIPlayer(Player):
         self.myTunnel = None
         self.myHill = None
         self.file = './delplanc18_plaisted20_state_util.txt'
-        self.stateUtil = self.initializeStateUtil() # {state: utility} 
+        self.stateUtil = self.initializeStateUtil() # {state: utility}
         self.discountFactor = 0.95 # Constant
         self.learningRate = 1.0 # will exponentially decline
         self.explorationRate = 1.0 # will exponentially decline
@@ -96,26 +96,24 @@ class AIPlayer(Player):
             self.myHill = getConstrList(currentState, currentState.whoseTurn, (ANTHILL,))[0]
         if (self.myFood == None):
             self.myFood = getCurrPlayerFood(self, currentState)
-        
+
         self.explorationRate = 1-self.tickingClock**2/1000000
         self.learningRate = 1-self.tickingClock**2/1000
-       
+
         self.reward += -0.001 # this will give a small penalty for every move made to encourage it to win faster
         consolidatedCurrent = self.consolidateState(currentState)
-        if self.lastState is None:
-            consolidatedLast = ""
-        else:
+        if not self.lastState is None:
             consolidatedLast = self.consolidateState(self.lastState)
-        
-        if consolidatedLast in self.stateUtil:
-            lastStateUtil = self.stateUtil[consolidatedLast]
-        else:
-            lastStateUtil = 0
-        if consolidatedCurrent in self.stateUtil:
-            currentUtil = self.stateUtil[consolidatedCurrent]
-        else:
-            currentUtil = 0
-        self.stateUtil[consolidatedLast] = lastStateUtil + self.learningRate*(self.reward+self.discount*currentUtil-lastStateUtil)
+
+            if consolidatedLast in self.stateUtil:
+                lastStateUtil = self.stateUtil[consolidatedLast]
+            else:
+                lastStateUtil = 0
+            if consolidatedCurrent in self.stateUtil:
+                currentUtil = self.stateUtil[consolidatedCurrent]
+            else:
+                currentUtil = 0
+            self.stateUtil[consolidatedLast] = lastStateUtil + self.learningRate*(self.reward+self.discount*currentUtil-lastStateUtil)
 
 
         # save this state in case the game ends
@@ -123,7 +121,7 @@ class AIPlayer(Player):
         # make a move
         moveType = random.random() # [0, 1]
         move = None
-        if moveType > self.explorationRate: 
+        if moveType > self.explorationRate:
             move = self.makeExploitationMove(currentState)
         if move is None:
             moves = listAllLegalMoves(currentState)
@@ -133,10 +131,13 @@ class AIPlayer(Player):
             numAnts = len(currentState.inventories[currentState.whoseTurn].ants)
             while (selectedMove.moveType == BUILD and numAnts >= 3):
                 selectedMove = moves[random.randint(0,len(moves) - 1)]
-
+            if selectedMove is None:
+                print('bad move ')
             return selectedMove
+        else:
+            return move
 
-         
+
 
     ##
     #getAttack
@@ -154,7 +155,7 @@ class AIPlayer(Player):
     def registerWin(self, hasWon):
         if hasWon:
             reward = 1
-        else: 
+        else:
             reward = -1
         # update stateUtil for self.lastState by applying TD learning equation
             # get consolidated state
@@ -297,8 +298,8 @@ class AIPlayer(Player):
                 if score1 > score2:
                     bestMove = key
         return bestMove
-            
-        
+
+
 
 
     ## FROM AIPLAYERUTILS for testing
