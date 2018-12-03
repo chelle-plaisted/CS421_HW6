@@ -1,0 +1,3 @@
+I am a consolidated state.|0.0
+I am also a consolidated state|1.0
+I am the best of the consolidated states.|2.0
